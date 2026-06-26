@@ -1,0 +1,17 @@
+[
+  {
+    "name": "fabdouglas",
+    "email": "fabdouglas@example.com",
+    "commits": 345
+  },
+  {
+    "name": "junit",
+    "email": "junit@example.com",
+    "commits": 12
+  },
+  {
+    "name": "bot",
+    "email": "bot@example.com",
+    "commits": 3
+  }
+]

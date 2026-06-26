@@ -1,0 +1,5 @@
+id;owner.id;data;mandatory;type;mode;secured
+service:scm:gitlab:url;service:scm:gitlab;;true;TEXT;;
+service:scm:gitlab:user;service:scm:gitlab;;true;TEXT;;
+service:scm:gitlab:auth-key;service:scm:gitlab;;true;TEXT;;true
+service:scm:gitlab:repository;service:scm:gitlab;;true;TEXT;;

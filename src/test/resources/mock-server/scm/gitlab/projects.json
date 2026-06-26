@@ -1,0 +1,18 @@
+[
+  {
+    "id": 12345,
+    "name": "ligoj-jupiter",
+    "path_with_namespace": "junit/ligoj-jupiter",
+    "open_issues_count": 2,
+    "star_count": 7,
+    "forks_count": 3
+  },
+  {
+    "id": 999,
+    "name": "ligoj-other",
+    "path_with_namespace": "junit/ligoj-other",
+    "open_issues_count": 0,
+    "star_count": 1,
+    "forks_count": 0
+  }
+]

@@ -1,0 +1,2 @@
+id;name;refined.id;mode;uiClasses
+service:scm:gitlab;gitlab;service:scm;LINK;fab fa-gitlab

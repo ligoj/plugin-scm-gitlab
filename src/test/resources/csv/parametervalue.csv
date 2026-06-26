@@ -1,0 +1,5 @@
+parameter.id;data;node.id;subscription.id!
+service:scm:gitlab:url;http://localhost:8120;service:scm:gitlab:dig;
+service:scm:gitlab:user;junit;service:scm:gitlab:dig;
+service:scm:gitlab:auth-key;secret;service:scm:gitlab:dig;
+service:scm:gitlab:repository;ligoj-jupiter;;1

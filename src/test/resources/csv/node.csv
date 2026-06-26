@@ -1,0 +1,4 @@
+id;name;refined.id;mode;uiClasses;tag;tagUiClasses
+service:scm;Source;;LINK;fas fa-code-branch;technical;fa fa-industry
+service:scm:gitlab;gitlab;service:scm;LINK;;;
+service:scm:gitlab:dig;gitlab DIG;service:scm:gitlab;LINK;;;
