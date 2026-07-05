@@ -32,7 +32,7 @@ function renderFeatures(subscription) {
   if (!user || !repo) return []
   const { t } = useI18nStore()
   const base = (params[PARAM_URL] || DEFAULT_URL).replace(/\/+$/, '')
-  return [renderServiceLink({ icon: 'mdi-gitlab', href: `${base}/${user}/${repo}`, title: t('service:scm:gitlab:repository') })]
+  return [renderServiceLink({ icon: 'mdi-home', href: `${base}/${user}/${repo}`, title: t('service:scm:gitlab:repository') })]
 }
 
 /** Repository chip. Mirrors the legacy renderKey('service:scm:gitlab:repository'). */

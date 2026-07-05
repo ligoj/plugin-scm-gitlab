@@ -11,6 +11,13 @@ import parentDef from '../../../../plugin-scm/ui/src/index.js'
 
 beforeEach(() => { setActivePinia(createPinia()) })
 
+/** Extract the mdi icon name from a renderServiceLink (VBtn) vnode. */
+function iconOf(vnode) {
+  const kids = vnode.children.default()
+  const iconVNode = Array.isArray(kids) ? kids[0] : kids
+  return iconVNode.children.default()
+}
+
 describe('plugin-scm-gitlab manifest', () => {
   it('exposes a valid tool-level manifest', () => {
     expect(def.id).toBe('scm-gitlab')
@@ -51,6 +58,7 @@ describe('plugin-scm-gitlab manifest', () => {
     expect(vnodes[0].props.target).toBe('_blank')
     // Trailing slashes trimmed; <url>/<user>/<repo>.
     expect(vnodes[0].props.href).toBe('https://git.acme.io/group/app')
+    expect(iconOf(vnodes[0])).toBe('mdi-home')
   })
 
   it('renderFeatures falls back to gitlab.com when no base URL is set', () => {
