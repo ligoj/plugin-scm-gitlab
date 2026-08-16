@@ -1,15 +1,6 @@
 package org.ligoj.app.plugin.gitlab;
 
-import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
-import static com.github.tomakehurst.wiremock.client.WireMock.get;
-import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
-
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.util.List;
-
 import jakarta.transaction.Transactional;
-
 import org.apache.commons.io.IOUtils;
 import org.apache.hc.core5.http.HttpStatus;
 import org.junit.jupiter.api.Assertions;
@@ -18,11 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.ligoj.app.AbstractServerTest;
 import org.ligoj.app.api.SubscriptionStatusWithData;
-import org.ligoj.app.model.Node;
-import org.ligoj.app.model.Parameter;
-import org.ligoj.app.model.ParameterValue;
-import org.ligoj.app.model.Project;
-import org.ligoj.app.model.Subscription;
+import org.ligoj.app.model.*;
 import org.ligoj.app.plugin.gitlab.client.GitLabContributor;
 import org.ligoj.app.resource.subscription.SubscriptionResource;
 import org.ligoj.bootstrap.MatcherUtil;
@@ -33,6 +20,12 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.test.annotation.Rollback;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
+
+import static com.github.tomakehurst.wiremock.client.WireMock.*;
 
 /**
  * Test class of {@link GitlabPluginResource}
@@ -54,7 +47,7 @@ class GitlabPluginResourceTest extends AbstractServerTest {
 	@BeforeEach
 	void prepareData() throws IOException {
 		persistEntities("csv",
-				new Class<?>[] { Node.class, Parameter.class, Project.class, Subscription.class, ParameterValue.class },
+				new Class<?>[]{Node.class, Parameter.class, Project.class, Subscription.class, ParameterValue.class},
 				StandardCharsets.UTF_8);
 		this.subscription = getSubscription("Jupiter", GitlabPluginResource.KEY);
 
@@ -81,7 +74,7 @@ class GitlabPluginResourceTest extends AbstractServerTest {
 	}
 
 	@Test
-	void checkStatus() throws Exception {
+	void checkStatus() {
 		httpServer.stubFor(get(urlPathEqualTo("/api/v4/user"))
 				.willReturn(aResponse().withStatus(HttpStatus.SC_OK).withBody("{\"username\":\"junit\"}")));
 		httpServer.start();
@@ -150,7 +143,7 @@ class GitlabPluginResourceTest extends AbstractServerTest {
 	}
 
 	@Test
-	void findReposByNameNoListing() throws IOException {
+	void findReposByNameNoListing() {
 		httpServer.start();
 		final List<NamedBean<String>> projects = resource.findReposByName("service:scm:gitlab:dig", "none");
 		Assertions.assertEquals(0, projects.size());

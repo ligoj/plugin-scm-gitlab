@@ -28,9 +28,8 @@ import org.ligoj.bootstrap.core.validation.ValidationJsonException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
-
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * GitLab resource. Unlike GitHub, GitLab is self-hostable, so the API base
@@ -53,7 +52,7 @@ public class GitlabPluginResource extends AbstractToolPluginResource implements 
 	public static final String KEY = URL.replace('/', ':').substring(1);
 
 	/**
-	 * GitLab base URL (node validation), e.g. <code>https://gitlab.com</code>.
+	 * GitLab base URL (node validation), e.g. <code><a href="https://gitlab.com">...</a></code>.
 	 */
 	public static final String PARAMETER_URL = KEY + ":url";
 
@@ -114,7 +113,7 @@ public class GitlabPluginResource extends AbstractToolPluginResource implements 
 	 * Validate the subscription repository (the GitLab project) and return it.
 	 * Throws when the project cannot be resolved.
 	 */
-	private GitLabProject validateProject(final Map<String, String> parameters) throws IOException {
+	private GitLabProject validateProject(final Map<String, String> parameters) {
 		final var user = parameters.get(PARAMETER_USER);
 		final var repository = parameters.get(PARAMETER_REPO);
 		final var request = new CurlRequest(HttpMethod.GET,
@@ -122,7 +121,7 @@ public class GitlabPluginResource extends AbstractToolPluginResource implements 
 		request.setSaveResponse(true);
 		if (processGitlabRequest(request, parameters)) {
 			final List<GitLabProject> projects = objectMapper.readValue(
-					StringUtils.defaultIfBlank(request.getResponse(), "[]"), new TypeReference<List<GitLabProject>>() {
+					StringUtils.defaultIfBlank(request.getResponse(), "[]"), new TypeReference<>() {
 						// Nothing to extend
 					});
 			final var match = projects.stream()
@@ -140,7 +139,7 @@ public class GitlabPluginResource extends AbstractToolPluginResource implements 
 	}
 
 	@Override
-	public SubscriptionStatusWithData checkSubscriptionStatus(final Map<String, String> parameters) throws IOException {
+	public SubscriptionStatusWithData checkSubscriptionStatus(final Map<String, String> parameters) {
 		final var status = new SubscriptionStatusWithData();
 		final var project = validateProject(parameters);
 		status.put("issues", project.getOpenIssuesCount());
@@ -156,16 +155,14 @@ public class GitlabPluginResource extends AbstractToolPluginResource implements 
 	 * @param parameters The node/subscription parameters.
 	 * @param project    The GitLab numeric project identifier.
 	 * @return The project contributors.
-	 * @throws IOException When the GitLab response cannot be read.
 	 */
-	private List<GitLabContributor> getContributors(final Map<String, String> parameters, final int project)
-			throws IOException {
+	private List<GitLabContributor> getContributors(final Map<String, String> parameters, final int project) {
 		final var request = new CurlRequest(HttpMethod.GET,
 				getApiUrl(parameters) + "/projects/" + project + "/repository/contributors", null);
 		request.setSaveResponse(true);
 		processGitlabRequest(request, parameters);
 		return objectMapper.readValue(StringUtils.defaultIfBlank(request.getResponse(), "[]"),
-				new TypeReference<List<GitLabContributor>>() {
+				new TypeReference<>() {
 					// Nothing to extend
 				});
 	}
@@ -176,19 +173,18 @@ public class GitlabPluginResource extends AbstractToolPluginResource implements 
 	 * @param node     The node identifier holding the parameters.
 	 * @param criteria The search criteria.
 	 * @return The matching project names.
-	 * @throws IOException When the GitLab response cannot be read.
 	 */
 	@GET
 	@Path("repos/{node}/{criteria}")
 	public List<NamedBean<String>> findReposByName(@PathParam("node") final String node,
-			@PathParam("criteria") final String criteria) throws IOException {
+			@PathParam("criteria") final String criteria) {
 		final var parameters = pvResource.getNodeParameters(node);
 		final var request = new CurlRequest(HttpMethod.GET,
 				getApiUrl(parameters) + "/projects?membership=true&search=" + criteria, null);
 		request.setSaveResponse(true);
 		if (processGitlabRequest(request, parameters)) {
 			final List<GitLabProject> projects = objectMapper.readValue(
-					StringUtils.defaultIfBlank(request.getResponse(), "[]"), new TypeReference<List<GitLabProject>>() {
+					StringUtils.defaultIfBlank(request.getResponse(), "[]"), new TypeReference<>() {
 						// Nothing to extend
 					});
 			return inMemoryPagination
