@@ -1,9 +1,13 @@
 package org.ligoj.app.plugin.gitlab;
 
 import java.io.IOException;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.HttpMethod;
@@ -14,15 +18,19 @@ import jakarta.ws.rs.core.MediaType;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Strings;
+import org.apache.hc.core5.http.ClassicHttpResponse;
+import org.apache.hc.core5.http.HttpStatus;
 import org.ligoj.app.api.SubscriptionStatusWithData;
 import org.ligoj.app.plugin.gitlab.client.GitLabContributor;
 import org.ligoj.app.plugin.gitlab.client.GitLabProject;
+import org.ligoj.app.plugin.gitlab.client.GitLabToken;
 import org.ligoj.app.plugin.scm.ScmResource;
 import org.ligoj.app.plugin.scm.ScmServicePlugin;
 import org.ligoj.app.resource.plugin.AbstractToolPluginResource;
 import org.ligoj.bootstrap.core.NamedBean;
 import org.ligoj.bootstrap.core.curl.CurlProcessor;
 import org.ligoj.bootstrap.core.curl.CurlRequest;
+import org.ligoj.bootstrap.core.curl.DefaultHttpResponseCallback;
 import org.ligoj.bootstrap.core.json.InMemoryPagination;
 import org.ligoj.bootstrap.core.validation.ValidationJsonException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -103,10 +111,52 @@ public class GitlabPluginResource extends AbstractToolPluginResource implements 
 		}
 	}
 
+	/**
+	 * Status codes of an expiry not available: a GitLab without <code>/personal_access_tokens/self</code>, or a token
+	 * unable to read itself.
+	 */
+	private static final Set<Integer> EXPIRY_NOT_AVAILABLE = Set.of(HttpStatus.SC_UNAUTHORIZED, HttpStatus.SC_FORBIDDEN,
+			HttpStatus.SC_NOT_FOUND);
+
+	/**
+	 * Read the expiry as usual, but an expiry not available is not an error: no error log, the expiry is unknown.
+	 */
+	private static final DefaultHttpResponseCallback QUIET_WHEN_NOT_AVAILABLE = new DefaultHttpResponseCallback() {
+		@Override
+		public boolean onResponse(final CurlRequest request, final ClassicHttpResponse response) throws IOException {
+			return !EXPIRY_NOT_AVAILABLE.contains(response.getCode()) && super.onResponse(request, response);
+		}
+	};
+
 	@Override
 	public boolean checkStatus(final Map<String, String> parameters) {
 		// Node validation: authenticated call to the current-user endpoint.
 		return processGitlabRequest(new CurlRequest(HttpMethod.GET, getApiUrl(parameters) + "/user", null), parameters);
+	}
+
+	/**
+	 * Return the expiry of the token of this node. Overrides <code>ToolPlugin#getCredentialExpiry</code> of an API
+	 * having the credential expiry, without <code>@Override</code>: this plug-in still builds and runs on an older API,
+	 * which never calls it.
+	 *
+	 * @param node       The node identifier.
+	 * @param parameters The node parameters.
+	 * @return The expiry, {@link Instant#MAX} for a token without expiry, <code>null</code> when unknown.
+	 */
+	public Instant getCredentialExpiry(final String node, final Map<String, String> parameters) {
+		final var request = new CurlRequest(HttpMethod.GET, getApiUrl(parameters) + "/personal_access_tokens/self", null,
+				QUIET_WHEN_NOT_AVAILABLE);
+		request.setSaveResponse(true);
+		if (!processGitlabRequest(request, parameters)) {
+			// GitLab without this endpoint, or a token unable to read itself: unknown expiry
+			return null;
+		}
+		final var token = objectMapper.readValue(request.getResponse(), GitLabToken.class);
+		if (token.getExpiresAt() == null) {
+			return Instant.MAX;
+		}
+		// GitLab tokens stop at 00:00 UTC of their expiry day
+		return LocalDate.parse(token.getExpiresAt()).atStartOfDay(ZoneOffset.UTC).toInstant();
 	}
 
 	/**

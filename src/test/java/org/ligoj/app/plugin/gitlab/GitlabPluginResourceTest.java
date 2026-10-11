@@ -1,9 +1,18 @@
 package org.ligoj.app.plugin.gitlab;
 
+import java.time.Instant;
+import org.ligoj.app.api.ToolPlugin;
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.core.LogEvent;
+import org.apache.logging.log4j.core.LoggerContext;
+import org.apache.logging.log4j.core.appender.AbstractAppender;
+import org.apache.logging.log4j.core.config.Property;
 import jakarta.transaction.Transactional;
 import org.apache.commons.io.IOUtils;
 import org.apache.hc.core5.http.HttpStatus;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -167,4 +176,65 @@ class GitlabPluginResourceTest extends AbstractServerTest {
 		httpServer.start();
 	}
 
+	private static final String NODE = "service:scm:gitlab:dig";
+
+	private void stubToken(final int status, final String body) {
+		httpServer.stubFor(get(urlPathEqualTo("/api/v4/personal_access_tokens/self"))
+				.willReturn(aResponse().withStatus(status).withBody(body)));
+		httpServer.start();
+	}
+
+	private Instant getCredentialExpiry(final int status, final String body) {
+		stubToken(status, body);
+		return resource.getCredentialExpiry(NODE, subscriptionResource.getParametersNoCheck(subscription));
+	}
+
+	@Test
+	void getCredentialExpiry() {
+		// GitLab tokens stop at 00:00 UTC of their expiry day
+		Assertions.assertEquals(Instant.parse("2026-11-30T00:00:00Z"), getCredentialExpiry(HttpStatus.SC_OK,
+				"{\"id\":4,\"name\":\"ligoj\",\"active\":true,\"scopes\":[\"api\"],\"expires_at\":\"2026-11-30\"}"));
+	}
+
+	@Test
+	void getCredentialExpiryNever() {
+		Assertions.assertEquals(Instant.MAX, getCredentialExpiry(HttpStatus.SC_OK, "{\"id\":4,\"expires_at\":null}"));
+	}
+
+	@Test
+	void getCredentialExpiryNotAvailable() {
+		// A GitLab without this endpoint, or a token unable to read itself: unknown, without any warning nor error
+		final var problems = new java.util.ArrayList<String>();
+		final var context = (LoggerContext) LogManager.getContext(false);
+		final var appender = new AbstractAppender("junit-expiry", null, null, true, Property.EMPTY_ARRAY) {
+			@Override
+			public void append(final LogEvent event) {
+				if (event.getLevel().isMoreSpecificThan(Level.WARN)) {
+					problems.add(event.getMessage().getFormattedMessage());
+				}
+			}
+		};
+		appender.start();
+		context.getConfiguration().getRootLogger().addAppender(appender, Level.ALL, null);
+		context.updateLoggers();
+		try {
+			Assertions.assertNull(getCredentialExpiry(HttpStatus.SC_NOT_FOUND, "{\"error\":\"404 Not Found\"}"));
+			Assertions.assertNull(getCredentialExpiry(HttpStatus.SC_FORBIDDEN, "{\"message\":\"403 Forbidden\"}"));
+		} finally {
+			context.getConfiguration().getRootLogger().removeAppender("junit-expiry");
+			context.updateLoggers();
+		}
+		Assertions.assertEquals(List.of(), problems);
+	}
+
+	@Test
+	void getCredentialExpiryThroughApi() throws Exception {
+		// Built against an API without this feature, the method overrides the API's one when it exists
+		final var method = java.util.Arrays.stream(ToolPlugin.class.getMethods())
+				.filter(m -> "getCredentialExpiry".equals(m.getName())).findFirst();
+		Assumptions.assumeTrue(method.isPresent(), "API without the credential expiry");
+		stubToken(HttpStatus.SC_OK, "{\"expires_at\":\"2026-11-30\"}");
+		Assertions.assertEquals(Instant.parse("2026-11-30T00:00:00Z"),
+				method.get().invoke(resource, NODE, subscriptionResource.getParametersNoCheck(subscription)));
+	}
 }
